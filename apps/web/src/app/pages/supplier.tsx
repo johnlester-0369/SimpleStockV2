@@ -118,14 +118,17 @@ export default function SupplierView() {
   return (
     <>
       <Helmet>
-        <title>Suppliers</title>
+        <title>Suppliers | SimpleStock V2</title>
         <meta
           name="description"
           content="Manage vendor and supplier contacts."
         />
       </Helmet>
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        {/* Stacks vertically on phones and switches to a horizontal row from
+            sm (tablet) up — the previous fixed row let "Add Supplier"
+            overlap the heading under ~380px, mirroring products.tsx's fix. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-headline">Suppliers</h1>
             <p className="mt-1 text-muted">
