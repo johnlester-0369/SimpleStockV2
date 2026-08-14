@@ -124,7 +124,7 @@ export default function DashboardView() {
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard</title>
+        <title>Admin Dashboard | SimpleStock V2</title>
         <meta
           name="description"
           content="Overview of key inventory metrics across the platform."
@@ -148,7 +148,8 @@ export default function DashboardView() {
           </Card.Root>
         )}
 
-        {/* Summary stat cards */}
+        {/* Summary stat cards — 1 col on phone, 3 cols from sm (tablet) up,
+            already responsive; kept unchanged. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card.Root padding="md">
             <Card.Body>
@@ -220,7 +221,10 @@ export default function DashboardView() {
                 No trend data available yet.
               </p>
             ) : (
-              <div className="h-64 w-full">
+              // Chart grows with viewport (h-64 phone → h-72 tablet → h-80
+              // laptop/desktop) so wide screens don't leave the card looking
+              // squat relative to the stat-card row above it.
+              <div className="h-64 w-full sm:h-72 lg:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={data.stockTrend}
@@ -335,7 +339,7 @@ export default function DashboardView() {
                 {data.recentActivity.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="text-body-md text-on-surface">
