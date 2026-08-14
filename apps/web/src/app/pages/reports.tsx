@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Helmet } from '@dr.pogodin/react-helmet'
 import { Download, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 import {
@@ -24,13 +24,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-// select/native-input styling reused verbatim from products.tsx/supplier.tsx
-// (Select.tsx's contract wasn't available to safely build against there either)
-const selectClassName = cn(
-  'h-10 rounded-lg border border-outline-variant bg-surface px-3 text-body-sm text-on-surface',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-)
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -97,11 +90,6 @@ export default function ReportsView() {
   const byProduct = salesSummary?.byProduct ?? []
   const bestMovers = byProduct.slice(0, 5)
   const worstMovers = [...byProduct].reverse().slice(0, 5)
-
-  const maxStockValue = useMemo(
-    () => Math.max(1, ...(stockValue?.points.map((p) => p.totalValue) ?? [0])),
-    [stockValue],
-  )
 
   function handleExport() {
     if (!byProduct.length) return
