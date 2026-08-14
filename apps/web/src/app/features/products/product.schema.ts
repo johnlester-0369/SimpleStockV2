@@ -6,11 +6,6 @@ import { z } from 'zod'
 
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(120, 'Name is too long'),
-  category: z
-    .string()
-    .max(60, 'Category is too long')
-    .optional()
-    .or(z.literal('')),
   supplierId: z.string().optional().or(z.literal('')),
   unitPrice: z.coerce.number().min(0, 'Unit price must be 0 or more'),
   reorderThreshold: z.coerce

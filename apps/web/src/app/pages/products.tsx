@@ -69,14 +69,12 @@ const selectClassName = cn(
 
 export default function ProductsView() {
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
   const [supplierId, setSupplierId] = useState('')
   const [stockStatus, setStockStatus] = useState<StockStatus | ''>('')
   const [page, setPage] = useState(1)
 
   const { data, isLoading, isError } = useProductsQuery({
     search: search || undefined,
-    category: category || undefined,
     supplierId: supplierId || undefined,
     stockStatus: stockStatus || undefined,
     page,
@@ -107,7 +105,6 @@ export default function ProductsView() {
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: '',
-      category: '',
       supplierId: '',
       unitPrice: 0,
       reorderThreshold: 0,
@@ -129,7 +126,6 @@ export default function ProductsView() {
     setFormError(null)
     reset({
       name: '',
-      category: '',
       supplierId: '',
       unitPrice: 0,
       reorderThreshold: 0,
@@ -142,7 +138,6 @@ export default function ProductsView() {
     setFormError(null)
     reset({
       name: product.name,
-      category: product.category ?? '',
       supplierId: product.supplierId ?? '',
       unitPrice: Number(product.unitPrice),
       reorderThreshold: product.reorderThreshold,
@@ -154,7 +149,6 @@ export default function ProductsView() {
     setFormError(null)
     const payload = {
       name: values.name,
-      category: values.category || undefined,
       supplierId: values.supplierId || undefined,
       unitPrice: values.unitPrice,
       reorderThreshold: values.reorderThreshold ?? 0,
