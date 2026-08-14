@@ -17,9 +17,16 @@ export interface Supplier {
   readonly updatedAt: string
 }
 
-export type CreateSupplierInput = Pick<Supplier, 'name'> &
-  Partial<Pick<Supplier, 'email' | 'phone'>>
+// '| undefined' required by exactOptionalPropertyTypes: true —
+// createSupplierSchema's .optional() fields (email/phone) parse to
+// 'string | undefined', which a plain 'Partial<Pick<...>>' (no undefined
+// in the union) rejects at the controller's service call
+export type CreateSupplierInput = Pick<Supplier, 'name'> & {
+  [K in 'email' | 'phone']?: Supplier[K] | undefined
+}
 
-export type UpdateSupplierInput = Partial<
-  Pick<Supplier, 'name' | 'email' | 'phone'>
->
+// Same exactOptionalPropertyTypes rationale as CreateSupplierInput above —
+// updateSupplierSchema's .optional() fields all need '| undefined' here
+export type UpdateSupplierInput = {
+  [K in 'name' | 'email' | 'phone']?: Supplier[K] | undefined
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Helmet } from '@dr.pogodin/react-helmet'
 import { Download, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 import {
@@ -11,7 +11,10 @@ import DatePicker from '@/app/components/ui/forms/DatePicker'
 import Card from '@/app/components/ui/data-display/Card'
 import Table from '@/app/components/ui/data-display/Table'
 import Alert from '@/app/components/ui/feedback/Alert'
-import { cn } from '@/infra/core/utils/cn.util'
+// Recharts v3's Tooltip formatter/labelFormatter props are typed against
+// ValueType | undefined and ReactNode — this import lets the callbacks
+// below match that contract instead of narrowing it to number/string
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import {
   AreaChart,
   Area,
@@ -21,13 +24,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-// select/native-input styling reused verbatim from products.tsx/supplier.tsx
-// (Select.tsx's contract wasn't available to safely build against there either)
-const selectClassName = cn(
-  'h-10 rounded-lg border border-outline-variant bg-surface px-3 text-body-sm text-on-surface',
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-)
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -94,11 +90,6 @@ export default function ReportsView() {
   const byProduct = salesSummary?.byProduct ?? []
   const bestMovers = byProduct.slice(0, 5)
   const worstMovers = [...byProduct].reverse().slice(0, 5)
-
-  const maxStockValue = useMemo(
-    () => Math.max(1, ...(stockValue?.points.map((p) => p.totalValue) ?? [0])),
-    [stockValue],
-  )
 
   function handleExport() {
     if (!byProduct.length) return
@@ -248,8 +239,12 @@ export default function ReportsView() {
                         currency + date shape the old hover badge used, so
                         the on-hover reading experience is unchanged */}
                     <Tooltip
-                      formatter={(value: number) => currency(value)}
-                      labelFormatter={(label: string) => label}
+                      // value can be undefined per Recharts' Formatter type (e.g. no
+                      // data point under the cursor) — guard before coercing to Number
+                      formatter={(value?: ValueType) =>
+                        currency(Number(value ?? 0))
+                      }
+                      labelFormatter={(label) => String(label)}
                     />
                     <Area
                       type="monotone"

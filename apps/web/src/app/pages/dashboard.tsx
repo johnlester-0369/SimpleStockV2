@@ -26,8 +26,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
+// Recharts v3's Tooltip formatter/labelFormatter props are typed against
+// ValueType | undefined and ReactNode, not raw number/string — this type
+// lets the callbacks below match that contract exactly instead of narrowing it
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent'
 function currency(value: number): string {
+  return `$${value.toFixed(2)}`
   return `$${value.toFixed(2)}`
 }
 
@@ -246,8 +250,12 @@ export default function DashboardView() {
                       width={80}
                     />
                     <Tooltip
-                      formatter={(value: number) => currency(value)}
-                      labelFormatter={(label: string) => label}
+                      // value can be undefined per Recharts' Formatter type (e.g. no
+                      // data point under the cursor) — guard before coercing to Number
+                      formatter={(value?: ValueType) =>
+                        currency(Number(value ?? 0))
+                      }
+                      labelFormatter={(label) => String(label)}
                     />
                     <Area
                       type="monotone"

@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Helmet } from '@dr.pogodin/react-helmet'
 import { useForm, Controller } from 'react-hook-form'
+// Explicit Resolver<Output> cast reconciles zodResolver's inferred
+// Resolver<Input,...> (Input is `unknown` for every z.coerce field in Zod v4)
+// with useForm<Output>()'s expected Resolver<Output,...>
+import type { Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Plus,
@@ -113,7 +117,7 @@ export default function ProductsView() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
     defaultValues: {
       name: '',
       supplierId: '',
@@ -123,12 +127,12 @@ export default function ProductsView() {
   })
 
   const sellForm = useForm<SellFormValues>({
-    resolver: zodResolver(sellFormSchema),
+    resolver: zodResolver(sellFormSchema) as Resolver<SellFormValues>,
     defaultValues: { quantity: 1, note: '' },
   })
 
   const restockForm = useForm<RestockFormValues>({
-    resolver: zodResolver(restockFormSchema),
+    resolver: zodResolver(restockFormSchema) as Resolver<RestockFormValues>,
     defaultValues: { quantity: 1, note: '' },
   })
 
@@ -161,7 +165,9 @@ export default function ProductsView() {
     const payload = {
       name: values.name,
       supplierId: values.supplierId || undefined,
-      unitPrice: values.unitPrice,
+      // Product.unitPrice is typed string (server returns Postgres numeric
+      // as a string) — the form works in number, so convert at the boundary
+      unitPrice: String(values.unitPrice),
       reorderThreshold: values.reorderThreshold ?? 0,
     }
     try {

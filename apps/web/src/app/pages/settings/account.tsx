@@ -12,7 +12,6 @@ import {
   useUpdateNameMutation,
   useChangePasswordMutation,
 } from '@/app/features/settings/account/account.mutations'
-import { useAccountQuery } from '@/app/features/settings/account/account.queries'
 import {
   updateNameSchema,
   changePasswordSchema,
