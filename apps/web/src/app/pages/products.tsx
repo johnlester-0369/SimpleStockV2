@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Helmet } from '@dr.pogodin/react-helmet'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Plus,
@@ -34,6 +34,9 @@ import type {
 import { useSuppliersQuery } from '@/app/features/supplier/supplier.queries'
 import Button from '@/app/components/ui/buttons/Button'
 import Input from '@/app/components/ui/forms/Input'
+import Combobox, {
+  type ComboboxOption,
+} from '@/app/components/ui/forms/Combobox'
 import { Field } from '@/app/components/ui/forms/Field'
 import Card from '@/app/components/ui/data-display/Card'
 import Table from '@/app/components/ui/data-display/Table'
@@ -58,10 +61,17 @@ const stockStatusBadge: Record<
   out: { label: 'Out of stock', color: 'error' },
 }
 
-// Select.tsx's prop contract wasn't available to safely build against (same
-// tradeoff dashboard.tsx notes for its activity table) — filters use a plain
-// native <select>/<textarea> styled to match Input's bordered token look
-// instead of guessing an unseen component API.
+const STOCK_STATUS_OPTIONS: ComboboxOption[] = [
+  { value: 'in_stock', label: 'In stock' },
+  { value: 'low', label: 'Low stock' },
+  { value: 'out', label: 'Out of stock' },
+]
+
+// Select.tsx's prop contract wasn't available to safely build against, but
+// Combobox.tsx's was — supplier/stock-status filters and the product form's
+// supplier field now use Combobox instead of a native <select>. Textareas
+// still fall back to this plain className since Textarea.tsx's contract
+// remains unread.
 const selectClassName = cn(
   'h-10 rounded-lg border border-outline-variant bg-surface px-3 text-body-sm text-on-surface',
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
@@ -69,14 +79,12 @@ const selectClassName = cn(
 
 export default function ProductsView() {
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('')
   const [supplierId, setSupplierId] = useState('')
   const [stockStatus, setStockStatus] = useState<StockStatus | ''>('')
   const [page, setPage] = useState(1)
 
   const { data, isLoading, isError } = useProductsQuery({
     search: search || undefined,
-    category: category || undefined,
     supplierId: supplierId || undefined,
     stockStatus: stockStatus || undefined,
     page,
@@ -100,6 +108,7 @@ export default function ProductsView() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -107,7 +116,6 @@ export default function ProductsView() {
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: '',
-      category: '',
       supplierId: '',
       unitPrice: 0,
       reorderThreshold: 0,
@@ -129,7 +137,6 @@ export default function ProductsView() {
     setFormError(null)
     reset({
       name: '',
-      category: '',
       supplierId: '',
       unitPrice: 0,
       reorderThreshold: 0,
@@ -142,7 +149,6 @@ export default function ProductsView() {
     setFormError(null)
     reset({
       name: product.name,
-      category: product.category ?? '',
       supplierId: product.supplierId ?? '',
       unitPrice: Number(product.unitPrice),
       reorderThreshold: product.reorderThreshold,
@@ -154,7 +160,6 @@ export default function ProductsView() {
     setFormError(null)
     const payload = {
       name: values.name,
-      category: values.category || undefined,
       supplierId: values.supplierId || undefined,
       unitPrice: values.unitPrice,
       reorderThreshold: values.reorderThreshold ?? 0,
@@ -234,14 +239,32 @@ export default function ProductsView() {
   const meta = data?.meta
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.limit)) : 1
 
+  // True whenever the visible rows are shaped by a search term or a filter
+  // combobox rather than reflecting the entire product catalog — drives
+  // which of the two empty-state variants renders below.
+  const hasActiveFilters = !!(search || supplierId || stockStatus)
+
+  // Resets every filter control (and pagination, since page 1 is the only
+  // valid page once filters are cleared) so the table falls back to the
+  // full, unfiltered catalog.
+  function clearFilters() {
+    setPage(1)
+    setSearch('')
+    setSupplierId('')
+    setStockStatus('')
+  }
+
   return (
     <>
       <Helmet>
-        <title>Products</title>
+        <title>Products | SimpleStock V2</title>
         <meta name="description" content="View, sell, and restock inventory." />
       </Helmet>
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        {/* Stacks vertically on phones (title above button, full-width) and
+            switches to a horizontal row from sm (tablet) up — the previous
+            fixed row let "Add Product" overlap the heading under ~380px. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-headline">Products</h1>
             <p className="mt-1 text-muted">
@@ -267,57 +290,61 @@ export default function ProductsView() {
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setPage(1)
-                setSearch(e.target.value)
-              }}
-              placeholder="Search products..."
-              className="pl-9"
-            />
-          </div>
-          <input
-            value={category}
-            onChange={(e) => {
-              setPage(1)
-              setCategory(e.target.value)
-            }}
-            placeholder="Category"
-            className={cn(selectClassName, 'w-36')}
-          />
-          <select
-            value={supplierId}
-            onChange={(e) => {
-              setPage(1)
-              setSupplierId(e.target.value)
-            }}
-            className={selectClassName}
-          >
-            <option value="">All suppliers</option>
-            {suppliers?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={stockStatus}
-            onChange={(e) => {
-              setPage(1)
-              setStockStatus(e.target.value as StockStatus | '')
-            }}
-            className={selectClassName}
-          >
-            <option value="">All stock levels</option>
-            <option value="in_stock">In stock</option>
-            <option value="low">Low stock</option>
-            <option value="out">Out of stock</option>
-          </select>
-        </div>
+        {/* Card groups the filter controls visually, matching the table's own
+            Card.Root/Card.Body treatment below — filters and results now read
+            as two distinct surfaces instead of the filter row floating loose
+            above the table. */}
+        <Card.Root>
+          <Card.Body>
+            {/* flex-col-first: filters stack full-width on mobile (each
+                control easy to tap); switches to a wrapped row from sm: up
+                where there's enough width for an inline layout */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative min-w-[200px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+                <Input
+                  value={search}
+                  onChange={(e) => {
+                    setPage(1)
+                    setSearch(e.target.value)
+                  }}
+                  placeholder="Search products..."
+                  className="pl-9"
+                />
+              </div>
+              {/* clearable + placeholder mimic the native <select>'s "All ..."
+                  option — Combobox has no built-in empty/reset entry.
+                  w-full sm:w-44: full-bleed touch target on mobile (stacked
+                  layout above), fixed width once the row goes inline at sm: */}
+              <Combobox
+                options={
+                  suppliers?.map((s) => ({ value: s.id, label: s.name })) ?? []
+                }
+                value={supplierId}
+                onChange={(value) => {
+                  setPage(1)
+                  setSupplierId(value)
+                }}
+                placeholder="All suppliers"
+                clearable
+                fullWidth={false}
+                className="w-full sm:w-44"
+              />
+              <Combobox
+                options={STOCK_STATUS_OPTIONS}
+                value={stockStatus}
+                onChange={(value) => {
+                  setPage(1)
+                  setStockStatus(value as StockStatus | '')
+                }}
+                placeholder="All stock levels"
+                clearable
+                fullWidth={false}
+                className="w-full sm:w-44"
+              />
+            </div>
+          </Card.Body>
+        </Card.Root>
 
         <Card.Root>
           <Card.Body>
@@ -341,16 +368,33 @@ export default function ProductsView() {
                 </Table.Root>
               </Table.ScrollArea>
             ) : items.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="No products yet"
-                description="Add your first product to start tracking inventory."
-                action={{
-                  label: 'Add Product',
-                  onClick: openCreateForm,
-                  icon: <Plus className="h-4 w-4" />,
-                }}
-              />
+              // Two distinct empty states: a filtered search/combobox query
+              // returning zero rows is not the same situation as a genuinely
+              // empty catalog, and conflating them ("No products yet" +
+              // "Add Product") misleads a user who is mid-search.
+              hasActiveFilters ? (
+                <EmptyState
+                  icon={Search}
+                  title="No results found"
+                  description="No products match your search or filters. Try adjusting them."
+                  action={{
+                    label: 'Clear filters',
+                    onClick: clearFilters,
+                    icon: <Search className="h-4 w-4" />,
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  icon={Package}
+                  title="No products yet"
+                  description="Add your first product to start tracking inventory."
+                  action={{
+                    label: 'Add Product',
+                    onClick: openCreateForm,
+                    icon: <Plus className="h-4 w-4" />,
+                  }}
+                />
+              )
             ) : (
               <>
                 <Table.ScrollArea>
@@ -443,7 +487,7 @@ export default function ProductsView() {
                 </Table.ScrollArea>
 
                 {meta && totalPages > 1 && (
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-body-sm text-on-surface-variant">
                       Page {meta.page} of {totalPages} ({meta.total} products)
                     </p>
@@ -508,29 +552,32 @@ export default function ProductsView() {
                       </p>
                     )}
                   </Field.Root>
-                  <Field.Root invalid={!!errors.category}>
-                    <Field.Label>
-                      Category
-                      <Field.RequiredIndicator fallback=" (optional)" />
-                    </Field.Label>
-                    <Input {...register('category')} />
-                  </Field.Root>
                   <Field.Root invalid={!!errors.supplierId}>
                     <Field.Label>
                       Supplier
                       <Field.RequiredIndicator fallback=" (optional)" />
                     </Field.Label>
-                    <select
-                      {...register('supplierId')}
-                      className={cn(selectClassName, 'w-full')}
-                    >
-                      <option value="">No supplier</option>
-                      {suppliers?.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Combobox emits value via onChange(value), not a native
+                        change event — register()'s spread pattern doesn't fit,
+                        so Controller bridges react-hook-form to it directly. */}
+                    <Controller
+                      name="supplierId"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox
+                          options={
+                            suppliers?.map((s) => ({
+                              value: s.id,
+                              label: s.name,
+                            })) ?? []
+                          }
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="No supplier"
+                          clearable
+                        />
+                      )}
+                    />
                   </Field.Root>
                   <Field.Root required invalid={!!errors.unitPrice}>
                     <Field.Label>Unit price</Field.Label>
