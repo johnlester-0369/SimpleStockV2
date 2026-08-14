@@ -117,7 +117,7 @@ export default function AccountSettingsView() {
   return (
     <>
       <Helmet>
-        <title>Account Settings</title>
+        <title>Account Settings | SimpleStock V2</title>
         <meta
           name="description"
           content="Manage your admin account profile and password."
@@ -256,7 +256,11 @@ export default function AccountSettingsView() {
             <Card.Title as="h3">Session</Card.Title>
           </Card.Header>
           <Card.Body>
-            <div className="flex items-center justify-between gap-4">
+            {/* Stacks vertically on phones (description above button, full
+                width) and switches to a horizontal row from sm (tablet) up —
+                the previous fixed row crowded the description against the
+                outline button under narrow widths. */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-body-sm text-on-surface-variant">
                 Sign out of your admin session on this device.
               </p>

@@ -50,13 +50,16 @@ export default function AdminLoginPage() {
   return (
     <>
       <Helmet>
-        <title>Admin Login</title>
+        <title>Admin Login | SimpleStock V2</title>
         <meta
           name="description"
           content="Restricted access. Admin credentials required."
         />
       </Helmet>
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+      {/* Padding scaled per breakpoint (px-4/py-12 on phones up to px-6/py-16
+          on tablet+) — the fixed py-16 previously pushed the form card below
+          the fold on short mobile viewports (e.g. landscape phones). */}
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="flex w-full max-w-sm flex-col gap-4"

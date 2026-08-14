@@ -108,14 +108,17 @@ export default function ReportsView() {
   return (
     <>
       <Helmet>
-        <title>Reports</title>
+        <title>Reports | SimpleStock V2</title>
         <meta
           name="description"
           content="Sales revenue, stock value trends, and top/bottom movers."
         />
       </Helmet>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Stacks vertically on phones and switches to a wrapped horizontal
+            row from sm (tablet) up — the previous fixed flex row let the
+            Export button crowd the heading under ~380px. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-headline">Reports</h1>
             <p className="mt-1 text-muted">
@@ -217,7 +220,10 @@ export default function ReportsView() {
                 No data for this range.
               </p>
             ) : (
-              <div className="h-64 w-full">
+              // Chart grows with viewport (h-64 phone → h-72 tablet → h-80
+              // laptop/desktop), matching dashboard.tsx's trend chart so
+              // both pages use the available width/height consistently.
+              <div className="h-64 w-full sm:h-72 lg:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={stockValue.points}
