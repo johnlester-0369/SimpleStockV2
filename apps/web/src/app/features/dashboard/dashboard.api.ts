@@ -12,12 +12,15 @@ import type {
   DashboardSummaryResponse,
 } from './dashboard.types'
 import { DASHBOARD_BASE_PATH } from './dashboard.constants'
+import { env } from '@/infra/core/config/env.config'
+import { dashboardDemoApi } from './dashboard.demo'
 
 export const dashboardApi = {
   // signal is forwarded from useQuery's queryFn context — without it,
   // react-query's automatic cancellation never reaches the underlying
   // fetch() call in apiClient
   async getSummary(signal?: AbortSignal): Promise<DashboardSummary> {
+    if (env.isDemoMode) return dashboardDemoApi.getSummary()
     const res = await apiClient.get<DashboardSummaryResponse>(
       `${DASHBOARD_BASE_PATH}/summary`,
       { signal },
