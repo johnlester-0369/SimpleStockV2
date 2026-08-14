@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Helmet } from '@dr.pogodin/react-helmet'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Plus,
@@ -34,6 +34,9 @@ import type {
 import { useSuppliersQuery } from '@/app/features/supplier/supplier.queries'
 import Button from '@/app/components/ui/buttons/Button'
 import Input from '@/app/components/ui/forms/Input'
+import Combobox, {
+  type ComboboxOption,
+} from '@/app/components/ui/forms/Combobox'
 import { Field } from '@/app/components/ui/forms/Field'
 import Card from '@/app/components/ui/data-display/Card'
 import Table from '@/app/components/ui/data-display/Table'
@@ -58,10 +61,17 @@ const stockStatusBadge: Record<
   out: { label: 'Out of stock', color: 'error' },
 }
 
-// Select.tsx's prop contract wasn't available to safely build against (same
-// tradeoff dashboard.tsx notes for its activity table) — filters use a plain
-// native <select>/<textarea> styled to match Input's bordered token look
-// instead of guessing an unseen component API.
+const STOCK_STATUS_OPTIONS: ComboboxOption[] = [
+  { value: 'in_stock', label: 'In stock' },
+  { value: 'low', label: 'Low stock' },
+  { value: 'out', label: 'Out of stock' },
+]
+
+// Select.tsx's prop contract wasn't available to safely build against, but
+// Combobox.tsx's was — supplier/stock-status filters and the product form's
+// supplier field now use Combobox instead of a native <select>. Textareas
+// still fall back to this plain className since Textarea.tsx's contract
+// remains unread.
 const selectClassName = cn(
   'h-10 rounded-lg border border-outline-variant bg-surface px-3 text-body-sm text-on-surface',
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
@@ -98,6 +108,7 @@ export default function ProductsView() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -261,57 +272,61 @@ export default function ProductsView() {
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setPage(1)
-                setSearch(e.target.value)
-              }}
-              placeholder="Search products..."
-              className="pl-9"
-            />
-          </div>
-          <input
-            value={category}
-            onChange={(e) => {
-              setPage(1)
-              setCategory(e.target.value)
-            }}
-            placeholder="Category"
-            className={cn(selectClassName, 'w-36')}
-          />
-          <select
-            value={supplierId}
-            onChange={(e) => {
-              setPage(1)
-              setSupplierId(e.target.value)
-            }}
-            className={selectClassName}
-          >
-            <option value="">All suppliers</option>
-            {suppliers?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={stockStatus}
-            onChange={(e) => {
-              setPage(1)
-              setStockStatus(e.target.value as StockStatus | '')
-            }}
-            className={selectClassName}
-          >
-            <option value="">All stock levels</option>
-            <option value="in_stock">In stock</option>
-            <option value="low">Low stock</option>
-            <option value="out">Out of stock</option>
-          </select>
-        </div>
+        {/* Card groups the filter controls visually, matching the table's own
+            Card.Root/Card.Body treatment below — filters and results now read
+            as two distinct surfaces instead of the filter row floating loose
+            above the table. */}
+        <Card.Root>
+          <Card.Body>
+            {/* flex-col-first: filters stack full-width on mobile (each
+                control easy to tap); switches to a wrapped row from sm: up
+                where there's enough width for an inline layout */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="relative min-w-[200px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+                <Input
+                  value={search}
+                  onChange={(e) => {
+                    setPage(1)
+                    setSearch(e.target.value)
+                  }}
+                  placeholder="Search products..."
+                  className="pl-9"
+                />
+              </div>
+              {/* clearable + placeholder mimic the native <select>'s "All ..."
+                  option — Combobox has no built-in empty/reset entry.
+                  w-full sm:w-44: full-bleed touch target on mobile (stacked
+                  layout above), fixed width once the row goes inline at sm: */}
+              <Combobox
+                options={
+                  suppliers?.map((s) => ({ value: s.id, label: s.name })) ?? []
+                }
+                value={supplierId}
+                onChange={(value) => {
+                  setPage(1)
+                  setSupplierId(value)
+                }}
+                placeholder="All suppliers"
+                clearable
+                fullWidth={false}
+                className="w-full sm:w-44"
+              />
+              <Combobox
+                options={STOCK_STATUS_OPTIONS}
+                value={stockStatus}
+                onChange={(value) => {
+                  setPage(1)
+                  setStockStatus(value as StockStatus | '')
+                }}
+                placeholder="All stock levels"
+                clearable
+                fullWidth={false}
+                className="w-full sm:w-44"
+              />
+            </div>
+          </Card.Body>
+        </Card.Root>
 
         <Card.Root>
           <Card.Body>
@@ -502,29 +517,32 @@ export default function ProductsView() {
                       </p>
                     )}
                   </Field.Root>
-                  <Field.Root invalid={!!errors.category}>
-                    <Field.Label>
-                      Category
-                      <Field.RequiredIndicator fallback=" (optional)" />
-                    </Field.Label>
-                    <Input {...register('category')} />
-                  </Field.Root>
                   <Field.Root invalid={!!errors.supplierId}>
                     <Field.Label>
                       Supplier
                       <Field.RequiredIndicator fallback=" (optional)" />
                     </Field.Label>
-                    <select
-                      {...register('supplierId')}
-                      className={cn(selectClassName, 'w-full')}
-                    >
-                      <option value="">No supplier</option>
-                      {suppliers?.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    {/* Combobox emits value via onChange(value), not a native
+                        change event — register()'s spread pattern doesn't fit,
+                        so Controller bridges react-hook-form to it directly. */}
+                    <Controller
+                      name="supplierId"
+                      control={control}
+                      render={({ field }) => (
+                        <Combobox
+                          options={
+                            suppliers?.map((s) => ({
+                              value: s.id,
+                              label: s.name,
+                            })) ?? []
+                          }
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="No supplier"
+                          clearable
+                        />
+                      )}
+                    />
                   </Field.Root>
                   <Field.Root required invalid={!!errors.unitPrice}>
                     <Field.Label>Unit price</Field.Label>
