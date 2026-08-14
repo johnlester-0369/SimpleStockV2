@@ -239,14 +239,32 @@ export default function ProductsView() {
   const meta = data?.meta
   const totalPages = meta ? Math.max(1, Math.ceil(meta.total / meta.limit)) : 1
 
+  // True whenever the visible rows are shaped by a search term or a filter
+  // combobox rather than reflecting the entire product catalog — drives
+  // which of the two empty-state variants renders below.
+  const hasActiveFilters = !!(search || supplierId || stockStatus)
+
+  // Resets every filter control (and pagination, since page 1 is the only
+  // valid page once filters are cleared) so the table falls back to the
+  // full, unfiltered catalog.
+  function clearFilters() {
+    setPage(1)
+    setSearch('')
+    setSupplierId('')
+    setStockStatus('')
+  }
+
   return (
     <>
       <Helmet>
-        <title>Products</title>
+        <title>Products | SimpleStock V2</title>
         <meta name="description" content="View, sell, and restock inventory." />
       </Helmet>
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        {/* Stacks vertically on phones (title above button, full-width) and
+            switches to a horizontal row from sm (tablet) up — the previous
+            fixed row let "Add Product" overlap the heading under ~380px. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-headline">Products</h1>
             <p className="mt-1 text-muted">
@@ -350,16 +368,33 @@ export default function ProductsView() {
                 </Table.Root>
               </Table.ScrollArea>
             ) : items.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="No products yet"
-                description="Add your first product to start tracking inventory."
-                action={{
-                  label: 'Add Product',
-                  onClick: openCreateForm,
-                  icon: <Plus className="h-4 w-4" />,
-                }}
-              />
+              // Two distinct empty states: a filtered search/combobox query
+              // returning zero rows is not the same situation as a genuinely
+              // empty catalog, and conflating them ("No products yet" +
+              // "Add Product") misleads a user who is mid-search.
+              hasActiveFilters ? (
+                <EmptyState
+                  icon={Search}
+                  title="No results found"
+                  description="No products match your search or filters. Try adjusting them."
+                  action={{
+                    label: 'Clear filters',
+                    onClick: clearFilters,
+                    icon: <Search className="h-4 w-4" />,
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  icon={Package}
+                  title="No products yet"
+                  description="Add your first product to start tracking inventory."
+                  action={{
+                    label: 'Add Product',
+                    onClick: openCreateForm,
+                    icon: <Plus className="h-4 w-4" />,
+                  }}
+                />
+              )
             ) : (
               <>
                 <Table.ScrollArea>
@@ -452,7 +487,7 @@ export default function ProductsView() {
                 </Table.ScrollArea>
 
                 {meta && totalPages > 1 && (
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-body-sm text-on-surface-variant">
                       Page {meta.page} of {totalPages} ({meta.total} products)
                     </p>
