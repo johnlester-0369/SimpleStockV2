@@ -67,7 +67,7 @@ export const productRepository = {
 
     const where = conditions.length ? and(...conditions) : undefined
 
-    const [rows, [{ count }]] = await Promise.all([
+    const [rows, [countRow]] = await Promise.all([
       db
         .select()
         .from(product)
@@ -81,7 +81,11 @@ export const productRepository = {
         .where(where),
     ])
 
-    return { items: rows.map(toProduct), total: count }
+    // countRow is typed '{ count: number } | undefined' under
+    // noUncheckedIndexedAccess — an empty aggregate result set never
+    // actually happens (COUNT(*) always returns exactly one row), but the
+    // fallback keeps `total` a plain 'number' without an unsafe assertion
+    return { items: rows.map(toProduct), total: countRow?.count ?? 0 }
   },
 
   async findById(id: string): Promise<Product | undefined> {
