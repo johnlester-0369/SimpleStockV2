@@ -35,7 +35,13 @@ export const getProduct = asyncHandler(async (req: Request, res: Response) => {
 export const createProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const input = createProductSchema.parse(req.body)
-    const created = await productService.createProduct(input)
+    // Zod coerces unitPrice to number for validation, but Product's
+    // unitPrice column is numeric mapped to string by Drizzle — convert
+    // here so CreateProductInput's string-typed unitPrice is satisfied
+    const created = await productService.createProduct({
+      ...input,
+      unitPrice: String(input.unitPrice),
+    })
     res.status(201).json({ data: toProductResponse(created) })
   },
 )
@@ -44,7 +50,13 @@ export const updateProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = productIdParamSchema.parse(req.params)
     const input = updateProductSchema.parse(req.body)
-    const updated = await productService.updateProduct(id, input)
+    // Same string-conversion rationale as createProduct above; only
+    // convert when present since unitPrice is optional on update
+    const updated = await productService.updateProduct(id, {
+      ...input,
+      unitPrice:
+        input.unitPrice !== undefined ? String(input.unitPrice) : undefined,
+    })
     res.json({ data: toProductResponse(updated) })
   },
 )

@@ -161,7 +161,9 @@ export default function ProductsView() {
     const payload = {
       name: values.name,
       supplierId: values.supplierId || undefined,
-      unitPrice: values.unitPrice,
+      // Product.unitPrice is typed string (server returns Postgres numeric
+      // as a string) — the form works in number, so convert at the boundary
+      unitPrice: String(values.unitPrice),
       reorderThreshold: values.reorderThreshold ?? 0,
     }
     try {
