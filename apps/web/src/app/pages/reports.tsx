@@ -11,7 +11,10 @@ import DatePicker from '@/app/components/ui/forms/DatePicker'
 import Card from '@/app/components/ui/data-display/Card'
 import Table from '@/app/components/ui/data-display/Table'
 import Alert from '@/app/components/ui/feedback/Alert'
-import { cn } from '@/infra/core/utils/cn.util'
+// Recharts v3's Tooltip formatter/labelFormatter props are typed against
+// ValueType | undefined and ReactNode — this import lets the callbacks
+// below match that contract instead of narrowing it to number/string
+import type { ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import {
   AreaChart,
   Area,
@@ -248,8 +251,12 @@ export default function ReportsView() {
                         currency + date shape the old hover badge used, so
                         the on-hover reading experience is unchanged */}
                     <Tooltip
-                      formatter={(value: number) => currency(value)}
-                      labelFormatter={(label: string) => label}
+                      // value can be undefined per Recharts' Formatter type (e.g. no
+                      // data point under the cursor) — guard before coercing to Number
+                      formatter={(value?: ValueType) =>
+                        currency(Number(value ?? 0))
+                      }
+                      labelFormatter={(label) => String(label)}
                     />
                     <Area
                       type="monotone"
