@@ -17,6 +17,8 @@ import Alert from '@/app/components/ui/feedback/Alert'
 import { ROUTES } from '@/app/routes/routes.constants'
 import { BrandLogo, BrandName } from '@/app/components/brand/Brand'
 import Card from '@/app/components/ui/data-display/Card'
+import { env } from '@/infra/core/config/env.config'
+import { DEMO_ADMIN_CREDENTIALS } from '@/infra/modules/auth/demo/demo-auth.lib'
 
 /**
  * Login page — Vite conversion of the former Next.js Client Component.
@@ -42,7 +44,15 @@ export default function AdminLoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { rememberMe: true },
+    defaultValues: {
+      rememberMe: true,
+      // Demo mode never talks to a real backend — pre-filling here saves
+      // a copy/paste round trip through the note box below on every visit.
+      ...(env.isDemoMode && {
+        email: DEMO_ADMIN_CREDENTIALS.email,
+        password: DEMO_ADMIN_CREDENTIALS.password,
+      }),
+    },
   })
 
   async function onSubmit(values: LoginFormValues) {
@@ -114,6 +124,37 @@ export default function AdminLoginPage() {
                   title="Error"
                   message={serverError}
                 />
+              )}
+
+              {/* Demo mode note — Alert renders title/message only (no
+                  children), so credentials get their own tonal block
+                  right below rather than being crammed into one message
+                  string. Both are gated on env.isDemoMode so none of this
+                  renders (or ships meaningfully) in a real deployment. */}
+              {env.isDemoMode && (
+                <>
+                  <Alert
+                    variant="tonal"
+                    color="info"
+                    title="Demo Mode"
+                    message="This is a demo. Data is stored on your device only nothing is sent to or processed by a server."
+                  />
+                  <div className="rounded-lg border border-info/20 bg-info-container/40 px-4 py-3 text-body-sm text-on-info-container">
+                    <p className="font-semibold">Demo credentials</p>
+                    <p className="mt-1">
+                      Email:{' '}
+                      <span className="font-mono">
+                        {DEMO_ADMIN_CREDENTIALS.email}
+                      </span>
+                    </p>
+                    <p>
+                      Password:{' '}
+                      <span className="font-mono">
+                        {DEMO_ADMIN_CREDENTIALS.password}
+                      </span>
+                    </p>
+                  </div>
+                </>
               )}
 
               <Field.Root required>

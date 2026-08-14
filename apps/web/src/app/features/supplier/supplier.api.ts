@@ -16,9 +16,12 @@ import type {
   UpdateSupplierInput,
 } from './supplier.types'
 import { SUPPLIER_BASE_PATH } from './supplier.constants'
+import { env } from '@/infra/core/config/env.config'
+import { supplierDemoApi } from './supplier.demo'
 
 export const supplierApi = {
   async list(signal?: AbortSignal): Promise<Supplier[]> {
+    if (env.isDemoMode) return supplierDemoApi.list()
     const res = await apiClient.get<SupplierListResponse>(SUPPLIER_BASE_PATH, {
       signal,
     })
@@ -26,6 +29,7 @@ export const supplierApi = {
   },
 
   async create(input: CreateSupplierInput): Promise<Supplier> {
+    if (env.isDemoMode) return supplierDemoApi.create(input)
     const res = await apiClient.post<SupplierResponse, CreateSupplierInput>(
       SUPPLIER_BASE_PATH,
       input,
@@ -34,6 +38,7 @@ export const supplierApi = {
   },
 
   async update(id: string, input: UpdateSupplierInput): Promise<Supplier> {
+    if (env.isDemoMode) return supplierDemoApi.update(id, input)
     const res = await apiClient.put<SupplierResponse, UpdateSupplierInput>(
       `${SUPPLIER_BASE_PATH}/${id}`,
       input,
@@ -42,6 +47,7 @@ export const supplierApi = {
   },
 
   async remove(id: string): Promise<void> {
+    if (env.isDemoMode) return supplierDemoApi.remove(id)
     await apiClient.delete(`${SUPPLIER_BASE_PATH}/${id}`)
   },
 }

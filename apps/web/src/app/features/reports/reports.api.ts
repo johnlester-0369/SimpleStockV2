@@ -15,12 +15,15 @@ import type {
   StockValueSummary,
 } from './reports.types'
 import { REPORTS_BASE_PATH } from './reports.constants'
+import { env } from '@/infra/core/config/env.config'
+import { reportsDemoApi } from './reports.demo'
 
 export const reportsApi = {
   async salesSummary(
     filters: ReportsFilters,
     signal?: AbortSignal,
   ): Promise<SalesSummary> {
+    if (env.isDemoMode) return reportsDemoApi.salesSummary(filters)
     const res = await apiClient.get<SalesSummaryResponse>(
       `${REPORTS_BASE_PATH}/sales-summary`,
       { params: { ...filters }, signal },
@@ -32,6 +35,7 @@ export const reportsApi = {
     filters: ReportsFilters,
     signal?: AbortSignal,
   ): Promise<StockValueSummary> {
+    if (env.isDemoMode) return reportsDemoApi.stockValue(filters)
     const res = await apiClient.get<StockValueResponse>(
       `${REPORTS_BASE_PATH}/stock-value`,
       { params: { ...filters }, signal },
