@@ -17,32 +17,40 @@ export interface Product {
 
 export type StockStatus = 'in_stock' | 'low' | 'out'
 
-export type CreateProductInput = Pick<Product, 'name' | 'unitPrice'> &
-  Partial<Pick<Product, 'category' | 'supplierId' | 'reorderThreshold'>>
+// '| undefined' on each mapped field is required by exactOptionalPropertyTypes:
+// true — createProductSchema's .optional() fields (category/supplierId/
+// reorderThreshold) type as 'T | undefined' when parsed, and a plain
+// 'Partial<Pick<Product, ...>>' (field?: T, no undefined in the union)
+// rejects that assignment at the controller call site
+export type CreateProductInput = Pick<Product, 'name' | 'unitPrice'> & {
+  [K in 'category' | 'supplierId' | 'reorderThreshold']?: Product[K] | undefined
+}
 
-// quantity intentionally absent — only sell()/restock() mutate it (SPEC.md)
-export type UpdateProductInput = Partial<
-  Pick<
-    Product,
-    'name' | 'category' | 'supplierId' | 'unitPrice' | 'reorderThreshold'
-  >
->
+// quantity intentionally absent — only sell()/restock() mutate it (SPEC.md).
+// Same exactOptionalPropertyTypes rationale as CreateProductInput above.
+export type UpdateProductInput = {
+  [
+    K in 'name' | 'category' | 'supplierId' | 'unitPrice' | 'reorderThreshold'
+  ]?: Product[K] | undefined
+}
 
 export interface ListProductsFilters {
-  search?: string
-  category?: string
-  supplierId?: string
-  stockStatus?: StockStatus
+  // listProductsQuerySchema's .optional() fields parse to 'T | undefined' —
+  // exactOptionalPropertyTypes requires that union spelled out here too
+  search?: string | undefined
+  category?: string | undefined
+  supplierId?: string | undefined
+  stockStatus?: StockStatus | undefined
   page: number
   limit: number
 }
 
 export interface SellProductInput {
   quantity: number
-  note?: string
+  note?: string | undefined
 }
 
 export interface RestockProductInput {
   quantity: number
-  note?: string
+  note?: string | undefined
 }

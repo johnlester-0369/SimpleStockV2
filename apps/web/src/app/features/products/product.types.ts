@@ -28,6 +28,9 @@ export interface ProductListResponse {
 }
 
 export interface ListProductsParams {
+  // Index signature required so productKeys.list() can accept this type
+  // where it expects Record<string, unknown> for the React Query key
+  [key: string]: unknown
   search?: string
   category?: string
   supplierId?: string
