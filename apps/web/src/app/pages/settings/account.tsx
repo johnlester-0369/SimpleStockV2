@@ -44,7 +44,6 @@ import { ROUTES } from '@/app/routes/routes.constants'
 export default function AccountSettingsView() {
   const navigate = useNavigate()
   const { data: session, refetch: refetchSession } = useSession()
-  const { data: profile } = useAccountQuery()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // ---- Name ----
@@ -165,12 +164,12 @@ export default function AccountSettingsView() {
                   </p>
                 )}
               </Field.Root>
-              {profile?.createdAt && (
-                <p className="text-body-sm text-on-surface-variant">
-                  Member since{' '}
-                  {new Date(profile.createdAt).toLocaleDateString()}
-                </p>
-              )}
+              {/* Display-only — email changes are disabled for admin accounts,
+                so this is a plain read-only field with no submit affordance */}
+              <Field.Root disabled>
+                <Field.Label>Email</Field.Label>
+                <Input value={session?.user?.email ?? ''} disabled readOnly />
+              </Field.Root>
               <div className="flex justify-end">
                 <Button
                   type="submit"
@@ -178,24 +177,10 @@ export default function AccountSettingsView() {
                   color="primary"
                   isLoading={isNameSubmitting}
                 >
-                  Save Name
+                  Save
                 </Button>
               </div>
             </form>
-          </Card.Body>
-        </Card.Root>
-
-        <Card.Root>
-          <Card.Header withDivider>
-            <Card.Title as="h3">Email</Card.Title>
-          </Card.Header>
-          <Card.Body>
-            {/* Display-only — email changes are disabled for admin accounts,
-                so this is a plain read-only field with no submit affordance */}
-            <Field.Root disabled>
-              <Field.Label>Email</Field.Label>
-              <Input value={session?.user?.email ?? ''} disabled readOnly />
-            </Field.Root>
           </Card.Body>
         </Card.Root>
 
