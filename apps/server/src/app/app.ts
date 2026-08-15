@@ -4,6 +4,9 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import compression from 'compression'
 import hpp from 'hpp'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
 import requestLogger from '@/app/middleware/request/request-logger.middleware.js'
 import sanitizeRequest from '@/app/middleware/sanitize.middleware.js'
 import requestTimeout from '@/app/middleware/request/request-timeout.middleware.js'
@@ -19,6 +22,24 @@ import {
 
 const app = express()
 
+// ESM has no __dirname global — derive it from import.meta.url so the static
+// root below resolves correctly regardless of the working directory the
+// process is launched from (matches Express 5.x's documented absolute-path
+// recommendation for express.static)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Compiled output lives at apps/server/dist/app/app.js (tsconfig rootDir/outDir
+// mirror src/ 1:1), so three levels up reaches apps/, then across to web/dist —
+// the Vite production build of the React SPA
+const webDistPath = path.join(__dirname, '../../../web/dist')
+
+// Checked once at startup, not per-request — explicit condition rather than
+// relying solely on express.static's implicit next() fallthrough. Keeps local
+// dev (no build yet) from ever registering static/SPA-fallback middleware at all.
+// Computed early (before Helmet) because the CSP below branches on it.
+const webDistExists = fs.existsSync(webDistPath)
+
 // Trust the first hop (your reverse proxy/load balancer) so req.ip reflects
 // the real client address instead of the proxy's — required for the rate
 // limiter below to key off actual clients rather than one shared IP.
@@ -27,24 +48,39 @@ const app = express()
 app.set('trust proxy', 1)
 
 // Helmet sets secure HTTP headers first so they attach to every response,
-// including error responses — must run before any other middleware. CSP
-// and other directives are set explicitly (rather than relying on Helmet's
-// defaults) so allowed sources are a deliberate, reviewed choice instead of
-// an implicit behavior change on a future Helmet version bump
+// including static assets and error responses — must run before any other
+// middleware (including express.static below) so nothing can short-circuit
+// the response before headers are attached. CSP is branched on webDistExists:
+// when this instance also serves the built SPA, scripts/styles/images need
+// to be allowed from 'self'; when it's API-only, deny by default rather than
+// inheriting Helmet's browser-oriented defaults.
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // JSON API serves no scripts/styles/images of its own — deny by
-        // default rather than inheriting Helmet's browser-oriented defaults
-        scriptSrc: ["'none'"],
-        styleSrc: ["'none'"],
-        imgSrc: ["'none'"],
-        objectSrc: ["'none'"],
-        frameAncestors: ["'none'"],
-      },
-    },
+    contentSecurityPolicy: webDistExists
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            // Many Vite/CSS-in-JS setups inject <style> tags at runtime and
+            // need 'unsafe-inline' here. Tighten with nonces/hashes later if
+            // your build supports it.
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:'],
+            connectSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+          },
+        }
+      : {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'none'"],
+            styleSrc: ["'none'"],
+            imgSrc: ["'none'"],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"],
+          },
+        },
     // Only meaningful once this service is reachable directly over HTTPS —
     // if TLS terminates at a reverse proxy/load balancer instead, set HSTS
     // there and remove this to avoid duplicate/conflicting headers
@@ -76,8 +112,29 @@ app.use(
 // the 'admin.session_token' cookie.
 app.all('/api/admin-auth/*splat', toNodeHandler(adminAuth))
 
-// Global IP-based rate limit runs before body parsing/auth so abusive
-// clients are rejected with 429 before their payload is even parsed
+// Compression, request logging, and the request-timeout guard are
+// registered ahead of express.static (and, by extension, ahead of the
+// rate limiter below) so served static assets still get gzip'd, get a
+// correlation id logged, and are bounded by the same handler timeout as
+// every other response — none of that depended on rate-limiting order.
+app.use(compression())
+app.use(requestLogger)
+app.use(requestTimeout)
+
+// Serve the compiled SPA before the global rate limiter so static asset
+// requests (JS/CSS/image bundles, which a browser fires many of per page
+// load) are never counted against — or rejected by — the IP-based limit
+// below. express.static sends the response and never calls next() for a
+// matched file, so a matched static request never reaches the limiter at
+// all; only requests that fall through (API calls, the SPA fallback, and
+// eventual 404s) are subject to it.
+if (webDistExists) {
+  app.use(express.static(webDistPath))
+}
+
+// Global IP-based rate limit — now runs after static asset serving so it
+// only ever throttles API traffic (and the SPA-fallback/404 path), never
+// a legitimate page load's burst of static asset requests.
 const limiter = rateLimit({
   windowMs: Number(env.RATE_LIMIT_WINDOW_MS),
   max: Number(env.RATE_LIMIT_MAX),
@@ -87,20 +144,6 @@ const limiter = rateLimit({
 })
 
 app.use(limiter)
-
-// Compress responses after rate limiting so throttled clients don't pay the
-// CPU cost of gzip on requests that get rejected anyway
-app.use(compression())
-
-// Registered before body parsing so even requests that fail JSON parsing
-// (malformed payloads) still get a correlation id and a logged status code
-app.use(requestLogger)
-
-// Bounds total time spent in application code, independent of the
-// Node-level requestTimeout/headersTimeout set in server.ts — those guard
-// the socket, this guards the handler. Registered here so a timed-out
-// request still logs through requestLogger's 'finish' handler.
-app.use(requestTimeout)
 
 // BODY_LIMIT caps request payload size to prevent memory-exhaustion DoS via
 // oversized request bodies; parse before any route handler sees the body
@@ -146,6 +189,31 @@ app.get('/', (_req: Request, res: Response) => {
 // under a version prefix so a future /api/v2 doesn't require touching
 // individual feature routers
 app.use('/api/v1', apiRouter)
+
+// SPA fallback: React Router owns client-side paths like /dashboard or
+// /admin/login, which don't correspond to real files on disk. Only active
+// when webDistExists — otherwise local dev falls straight through to
+// notFoundHandler as before. Excluding /api explicitly is required: an
+// unmatched API route reaches here via apiRouter's own next() call, and
+// without the guard it would incorrectly return index.html instead of
+// notFoundHandler's JSON 404. Unlike the static assets above, this
+// fallback runs after the rate limiter — it serves index.html on every
+// unmatched client-side route, so it's rate-limited like any other route.
+if (webDistExists) {
+  app.use((req, res, next) => {
+    if (
+      req.method !== 'GET' ||
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/health')
+    ) {
+      next()
+      return
+    }
+    res.sendFile(path.join(webDistPath, 'index.html'), (err) => {
+      if (err) next(err)
+    })
+  })
+}
 
 // Catch-all for unmatched routes — must be registered after all other routes
 // so it only fires when nothing else handled the request
