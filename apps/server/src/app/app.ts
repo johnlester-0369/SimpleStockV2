@@ -105,6 +105,17 @@ app.use(
   }),
 )
 
+// Serve the compiled SPA before the global rate limiter so static asset
+// requests (JS/CSS/image bundles, which a browser fires many of per page
+// load) are never counted against — or rejected by — the IP-based limit
+// below. express.static sends the response and never calls next() for a
+// matched file, so a matched static request never reaches the limiter at
+// all; only requests that fall through (API calls, the SPA fallback, and
+// eventual 404s) are subject to it.
+if (webDistExists) {
+  app.use(express.static(webDistPath))
+}
+
 // Better Auth needs the raw request stream — mounted before express.json()
 // so its handler receives an unparsed body; it has its own internal rate
 // limiting, separate from the global limiter registered below. Routes
@@ -120,17 +131,6 @@ app.all('/api/admin-auth/*splat', toNodeHandler(adminAuth))
 app.use(compression())
 app.use(requestLogger)
 app.use(requestTimeout)
-
-// Serve the compiled SPA before the global rate limiter so static asset
-// requests (JS/CSS/image bundles, which a browser fires many of per page
-// load) are never counted against — or rejected by — the IP-based limit
-// below. express.static sends the response and never calls next() for a
-// matched file, so a matched static request never reaches the limiter at
-// all; only requests that fall through (API calls, the SPA fallback, and
-// eventual 404s) are subject to it.
-if (webDistExists) {
-  app.use(express.static(webDistPath))
-}
 
 // Global IP-based rate limit — now runs after static asset serving so it
 // only ever throttles API traffic (and the SPA-fallback/404 path), never
