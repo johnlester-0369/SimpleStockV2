@@ -63,6 +63,20 @@ feature routes through `localStorage` instead of the API; see
 [`apps/web/README.md`](apps/web/README.md#demo-mode) for how deep that
 goes.
 
+## Production Deployment
+
+For production, `apps/server` can serve the compiled web build directly
+instead of running two separate processes: `npm run build` inside
+`apps/web` outputs to `apps/web/dist`, and `apps/server`'s `app.ts`
+detects that directory at startup and serves it (with an SPA fallback
+for client-side routes) alongside the API on the same port. Run
+`make build` from the repo root to build both apps, then `make
+start-server` (or `cd apps/server && npm run start`) to serve everything
+from a single Express process — see
+[`apps/server/README.md`](apps/server/README.md#serving-the-web-frontend)
+for details. Keeping the two apps on separate hosts is still fully
+supported; this is opt-in based on whether `apps/web/dist` exists.
+
 ## Makefile Commands
 
 The root `Makefile` wraps each app's npm scripts and never touches a
@@ -114,6 +128,6 @@ SimpleStockV2/
 
 - [`apps/server/README.md`](apps/server/README.md) — environment
   variables, request pipeline, API route table, database schema, admin
-  bootstrapping, graceful shutdown
+  bootstrapping, graceful shutdown, serving the web frontend
 - [`apps/web/README.md`](apps/web/README.md) — demo mode, feature-module
-  conventions, routing/auth table, path alias usage
+  conventions, routing/auth table, path alias usage, production build & serving

@@ -115,18 +115,20 @@ Registered in this exact order — each step depends on the one before it
 (e.g. rate limiting must run before body parsing, so an abusive client
 is rejected before its payload is ever parsed):
 
-1. `helmet` (secure headers, strict CSP for a JSON-only API — `scriptSrc`/`styleSrc`/`imgSrc` all denied by default since this API serves no browser-rendered content of its own)
+1. `helmet` (secure headers; CSP allows `'self'` scripts/styles/images once the web build is served, denies everything by default otherwise)
 2. `cors` (origin allowlist from `CORS_ORIGIN`)
 3. Better Auth admin handler (`/api/admin-auth/*`, mounted before body parsing — Better Auth needs the raw request stream)
 4. Global rate limiter
 5. `compression`
 6. Request logger (assigns a correlation ID, logged with every request)
 7. Request timeout guard (application-level backstop, independent of the Node socket timeout)
-8. `express.json()` / `express.urlencoded()` (size-capped by `BODY_LIMIT`)
-9. `hpp` + prototype-pollution sanitization (strips `__proto__`/`constructor`/`prototype` keys)
-10. Health checks (`/health/live`, `/health/ready`) and root route
-11. Feature routes (`/api/v1/*`)
-12. 404 handler → centralized error handler
+8. `express.static` serving the built SPA from `apps/web/dist` when present (production only — see "Serving the Web Frontend" below)
+9. `express.json()` / `express.urlencoded()` (size-capped by `BODY_LIMIT`)
+10. `hpp` + prototype-pollution sanitization (strips `__proto__`/`constructor`/`prototype` keys)
+11. Health checks (`/health/live`, `/health/ready`) and root route
+12. Feature routes (`/api/v1/*`)
+13. SPA fallback — serves `index.html` for unmatched GET routes when the web build is present, so React Router can own client-side paths
+14. 404 handler → centralized error handler
 
 ### Authentication
 
@@ -139,6 +141,19 @@ never leaves the client half-authenticated), with a 7-day expiry and a
 `before`-hook that rejects non-admin sign-ins and enforces account
 bans — checked _before_ the role gate, so a banned admin sees "account
 banned," not the generic "admin access required."
+
+### Serving the Web Frontend
+
+In production, this server can also serve the compiled React SPA from
+`apps/web/dist` — `app.ts` resolves that path relative to the compiled
+`dist/app/app.js` output and checks `fs.existsSync` once at startup. When
+the build is present, `express.static` serves the built assets and a
+catch-all GET handler falls back to `index.html` for client-side routes
+(e.g. `/dashboard`), while `/api/*` and `/health/*` requests are excluded
+from the fallback so they still reach `notFoundHandler`. When no build is
+present (e.g. local development, where `apps/web` runs its own Vite dev
+server on `:5173`), none of this static-serving middleware is registered
+at all — the two apps are still independently deployable.
 
 ## API Routes
 

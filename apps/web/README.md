@@ -50,6 +50,17 @@ From the monorepo root, the equivalent `make dev-web`, `make build-web`,
 `make lint-web`, and `make format-web` targets are also available (see
 the root `Makefile`).
 
+## Production Build & Serving
+
+`npm run build` compiles this app to `apps/web/dist`. In production,
+`apps/server` serves that build directly — `app.ts` detects `apps/web/dist`
+at startup and, when present, serves the static assets and falls back to
+`index.html` for client-side routes, so both apps can run as a single
+Express process behind one port. During local development (`npm run dev`
+here + `npm run dev` in `apps/server`, or `make dev` from the repo root),
+this app's own Vite dev server on `:5173` is what's used instead — the
+static-serving path in `apps/server` only activates once a build exists.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env`:
