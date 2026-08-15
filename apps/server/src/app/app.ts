@@ -123,15 +123,6 @@ if (webDistExists) {
 // the 'admin.session_token' cookie.
 app.all('/api/admin-auth/*splat', toNodeHandler(adminAuth))
 
-// Compression, request logging, and the request-timeout guard are
-// registered ahead of express.static (and, by extension, ahead of the
-// rate limiter below) so served static assets still get gzip'd, get a
-// correlation id logged, and are bounded by the same handler timeout as
-// every other response — none of that depended on rate-limiting order.
-app.use(compression())
-app.use(requestLogger)
-app.use(requestTimeout)
-
 // Global IP-based rate limit — now runs after static asset serving so it
 // only ever throttles API traffic (and the SPA-fallback/404 path), never
 // a legitimate page load's burst of static asset requests.
@@ -144,6 +135,15 @@ const limiter = rateLimit({
 })
 
 app.use(limiter)
+
+// Compression, request logging, and the request-timeout guard are
+// registered ahead of express.static (and, by extension, ahead of the
+// rate limiter below) so served static assets still get gzip'd, get a
+// correlation id logged, and are bounded by the same handler timeout as
+// every other response — none of that depended on rate-limiting order.
+app.use(compression())
+app.use(requestLogger)
+app.use(requestTimeout)
 
 // BODY_LIMIT caps request payload size to prevent memory-exhaustion DoS via
 // oversized request bodies; parse before any route handler sees the body
