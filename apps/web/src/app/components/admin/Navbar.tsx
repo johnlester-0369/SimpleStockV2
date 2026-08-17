@@ -14,14 +14,16 @@ interface NavbarProps {
 }
 
 /**
- * Route-to-title map — only lists routes that actually exist in
- * routes.constants.ts. The reference pattern mapped Products/
- * Transaction/Report/Settings, none of which exist in this app yet;
- * extending this map is a one-line addition whenever a new admin
- * route ships, mirroring Sidebar's navItems list.
+ * Route-to-title map — covers every route in routes.constants.ts
+ * (Dashboard, Products, Suppliers, Reports, Account Settings) so
+ * Navbar's heading always resolves to a real page name instead of
+ * falling back to the generic 'Admin' label in getPageTitle below.
  */
 const routeTitles: Record<string, string> = {
   [ROUTES.ADMIN.DASHBOARD]: 'Dashboard',
+  [ROUTES.ADMIN.PRODUCTS]: 'Products',
+  [ROUTES.ADMIN.SUPPLIER]: 'Suppliers',
+  [ROUTES.ADMIN.REPORTS]: 'Reports',
   [ROUTES.ADMIN.ACCOUNT_SETTINGS]: 'Account Settings',
 }
 
