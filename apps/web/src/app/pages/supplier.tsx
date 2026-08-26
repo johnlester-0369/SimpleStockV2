@@ -115,6 +115,11 @@ export default function SupplierView() {
     }
   }
 
+  // Hide header "Add Supplier" button when the page is genuinely empty
+  // (no suppliers and not loading), just like products.tsx does with
+  // its "Add Product" button and filters.
+  const isGenuinelyEmpty = !isLoading && (!suppliers || suppliers.length === 0)
+
   return (
     <>
       <Helmet>
@@ -135,14 +140,16 @@ export default function SupplierView() {
               Manage vendor/supplier contacts tied to products.
             </p>
           </div>
-          <Button
-            variant="filled"
-            color="primary"
-            leftIcon={<Plus className="h-4 w-4" />}
-            onClick={openCreateForm}
-          >
-            Add Supplier
-          </Button>
+          {!isGenuinelyEmpty && (
+            <Button
+              variant="filled"
+              color="primary"
+              leftIcon={<Plus className="h-4 w-4" />}
+              onClick={openCreateForm}
+            >
+              Add Supplier
+            </Button>
+          )}
         </div>
 
         {isError && (

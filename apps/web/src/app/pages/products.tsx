@@ -250,6 +250,13 @@ export default function ProductsView() {
   // which of the two empty-state variants renders below.
   const hasActiveFilters = !!(search || supplierId || stockStatus)
 
+  // Hide filter card and header "Add Product" button when the product list
+  // is genuinely empty and no filters are active. Supplier presence does
+  // not affect this decision—filters are useless when there are no products
+  // to filter, and the "Add Product" button is redundant when the empty
+  // state already provides an "Add Product" action.
+  const isGenuinelyEmpty = !isLoading && items.length === 0 && !hasActiveFilters
+
   // Resets every filter control (and pagination, since page 1 is the only
   // valid page once filters are cleared) so the table falls back to the
   // full, unfiltered catalog.
@@ -277,14 +284,16 @@ export default function ProductsView() {
               Search, sell, restock, and manage your inventory.
             </p>
           </div>
-          <Button
-            variant="filled"
-            color="primary"
-            leftIcon={<Plus className="h-4 w-4" />}
-            onClick={openCreateForm}
-          >
-            Add Product
-          </Button>
+          {!isGenuinelyEmpty && (
+            <Button
+              variant="filled"
+              color="primary"
+              leftIcon={<Plus className="h-4 w-4" />}
+              onClick={openCreateForm}
+            >
+              Add Product
+            </Button>
+          )}
         </div>
 
         {isError && (
@@ -299,58 +308,62 @@ export default function ProductsView() {
         {/* Card groups the filter controls visually, matching the table's own
             Card.Root/Card.Body treatment below — filters and results now read
             as two distinct surfaces instead of the filter row floating loose
-            above the table. */}
-        <Card.Root>
-          <Card.Body>
-            {/* flex-col-first: filters stack full-width on mobile (each
-                control easy to tap); switches to a wrapped row from sm: up
-                where there's enough width for an inline layout */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <div className="relative min-w-[200px] flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-                <Input
-                  value={search}
-                  onChange={(e) => {
+            above the table. Hidden when the page is genuinely empty because
+            filters are useless without any data to filter. */}
+        {!isGenuinelyEmpty && (
+          <Card.Root>
+            <Card.Body>
+              {/* flex-col-first: filters stack full-width on mobile (each
+                  control easy to tap); switches to a wrapped row from sm: up
+                  where there's enough width for an inline layout */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative min-w-[200px] flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+                  <Input
+                    value={search}
+                    onChange={(e) => {
+                      setPage(1)
+                      setSearch(e.target.value)
+                    }}
+                    placeholder="Search products..."
+                    className="pl-9"
+                  />
+                </div>
+                {/* clearable + placeholder mimic the native <select>'s "All ..."
+                    option — Combobox has no built-in empty/reset entry.
+                    w-full sm:w-44: full-bleed touch target on mobile (stacked
+                    layout above), fixed width once the row goes inline at sm: */}
+                <Combobox
+                  options={
+                    suppliers?.map((s) => ({ value: s.id, label: s.name })) ??
+                    []
+                  }
+                  value={supplierId}
+                  onChange={(value) => {
                     setPage(1)
-                    setSearch(e.target.value)
+                    setSupplierId(value)
                   }}
-                  placeholder="Search products..."
-                  className="pl-9"
+                  placeholder="All suppliers"
+                  clearable
+                  fullWidth={false}
+                  className="w-full sm:w-44"
+                />
+                <Combobox
+                  options={STOCK_STATUS_OPTIONS}
+                  value={stockStatus}
+                  onChange={(value) => {
+                    setPage(1)
+                    setStockStatus(value as StockStatus | '')
+                  }}
+                  placeholder="All stock levels"
+                  clearable
+                  fullWidth={false}
+                  className="w-full sm:w-44"
                 />
               </div>
-              {/* clearable + placeholder mimic the native <select>'s "All ..."
-                  option — Combobox has no built-in empty/reset entry.
-                  w-full sm:w-44: full-bleed touch target on mobile (stacked
-                  layout above), fixed width once the row goes inline at sm: */}
-              <Combobox
-                options={
-                  suppliers?.map((s) => ({ value: s.id, label: s.name })) ?? []
-                }
-                value={supplierId}
-                onChange={(value) => {
-                  setPage(1)
-                  setSupplierId(value)
-                }}
-                placeholder="All suppliers"
-                clearable
-                fullWidth={false}
-                className="w-full sm:w-44"
-              />
-              <Combobox
-                options={STOCK_STATUS_OPTIONS}
-                value={stockStatus}
-                onChange={(value) => {
-                  setPage(1)
-                  setStockStatus(value as StockStatus | '')
-                }}
-                placeholder="All stock levels"
-                clearable
-                fullWidth={false}
-                className="w-full sm:w-44"
-              />
-            </div>
-          </Card.Body>
-        </Card.Root>
+            </Card.Body>
+          </Card.Root>
+        )}
 
         <Card.Root>
           <Card.Body>
