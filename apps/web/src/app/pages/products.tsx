@@ -38,9 +38,8 @@ import type {
 import { useSuppliersQuery } from '@/app/features/supplier/supplier.queries'
 import Button from '@/app/components/ui/buttons/Button'
 import Input from '@/app/components/ui/forms/Input'
-import Combobox, {
-  type ComboboxOption,
-} from '@/app/components/ui/forms/Combobox'
+import Combobox from '@/app/components/ui/forms/Combobox'
+import Select, { type SelectOption } from '@/app/components/ui/forms/Select'
 import { Field } from '@/app/components/ui/forms/Field'
 import Card from '@/app/components/ui/data-display/Card'
 import Table from '@/app/components/ui/data-display/Table'
@@ -65,7 +64,9 @@ const stockStatusBadge: Record<
   out: { label: 'Out of stock', color: 'error' },
 }
 
-const STOCK_STATUS_OPTIONS: ComboboxOption[] = [
+const STOCK_STATUS_OPTIONS: SelectOption[] = [
+  // Explicit "All" option allows clearing the filter since Select lacks Combobox's clearable prop
+  { value: '', label: 'All stock levels' },
   { value: 'in_stock', label: 'In stock' },
   { value: 'low', label: 'Low stock' },
   { value: 'out', label: 'Out of stock' },
@@ -348,15 +349,13 @@ export default function ProductsView() {
                   fullWidth={false}
                   className="w-full sm:w-44"
                 />
-                <Combobox
+                <Select
                   options={STOCK_STATUS_OPTIONS}
                   value={stockStatus}
                   onChange={(value) => {
                     setPage(1)
                     setStockStatus(value as StockStatus | '')
                   }}
-                  placeholder="All stock levels"
-                  clearable
                   fullWidth={false}
                   className="w-full sm:w-44"
                 />
